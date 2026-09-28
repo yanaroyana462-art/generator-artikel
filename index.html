@@ -1184,20 +1184,6 @@ function selectPublicArticle(id) {
     loadPublicArticle(id);
     loadPublicArticlesSidebar();
 }
-        try {
-            const res = await fetch(`/api/articles/${readId}`);
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('publicArticleTitle').innerText = data.data.title;
-                document.getElementById('publicArticleContent').innerHTML = data.data.content;
-            }
-        } catch (err) {
-            document.getElementById('publicArticleTitle').innerText = "Artikel Tidak Ditemukan";
-            document.getElementById('publicArticleContent').innerHTML = "<p class='text-slate-500'>Tautan tidak valid atau artikel telah dihapus.</p>";
-            document.getElementById('reader-gate-blur').classList.add('hidden');
-        }
-    }
-}
 
 async function unlockArticle(e) {
     e.preventDefault();
