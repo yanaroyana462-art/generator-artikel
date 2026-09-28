@@ -92,6 +92,9 @@ class GenerateRequest(BaseModel):
     topic: str
     target_audience: Optional[str] = "Umum"
     article_length: Optional[str] = "Sedang"
+    article_type: Optional[str] = "Sedang" # Ringan, Sedang, Ilmiah/Akademis
+    article_format: Optional[str] = "Artikel Umum" # Khutbah, Diskusi, Makalah
+    article_tone: Optional[str] = "Formal" # Formal, Semi-Formal, Santai
     selected_kitab_ids: Optional[List[int]] = []
 
 # --- API ENDPOINTS ---
@@ -205,6 +208,9 @@ Sajikan sebuah artikel ideologis berbobot tinggi mengenai topik berikut:
 TOPIK/TEMA: {payload.topic}
 TARGET AUDIENS: {payload.target_audience}
 PANJANG NASKAH: {payload.article_length}
+GAYA PENULISAN: {payload.article_type}
+FORMAT NASKAH: {payload.article_format}
+GAYA BAHASA/TONE: {payload.article_tone}
 
 ---
 RUJUKAN KITAB TERKASIH (KONTEKS RAG):

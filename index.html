@@ -26,7 +26,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col" onload="renderKitabList(); renderContacts();">
 
     <!-- NAVBAR HEADER -->
     <header class="bg-slate-900/80 border-b border-slate-800 backdrop-blur sticky top-0 z-30">
@@ -79,17 +79,59 @@
                             <button type="button" onclick="fillExample('Pentingnya Pembinaan Kepribadian Islam bagi Generasi Muda')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700/50 transition-colors">Generasi Muda</button>
                         </div>
                     </div>
+                    
+                    <!-- Article Type -->
+                    <div>
+                        <label for="articleType" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Jenis Artikel</label>
+                        <select id="articleType" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                            <option value="Ringan">Ringan (Populer)</option>
+                            <option value="Sedang" selected>Sedang (Analitis)</option>
+                            <option value="Ilmiah/Akademis">Ilmiah/Akademis (Mendalam)</option>
+                        </select>
+                    </div>
+
+                    <!-- Article Length -->
+                    <div>
+                        <label for="articleLength" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Panjang Artikel</label>
+                        <select id="articleLength" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                            <option value="500 kata">500 Kata (Ringkas)</option>
+                            <option value="1000 kata" selected>1000 Kata (Sedang)</option>
+                            <option value="1500 kata">1500 Kata (Panjang)</option>
+                        </select>
+                    </div>
+
+                    <!-- Article Format -->
+                    <div>
+                        <label for="articleFormat" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Format Naskah</label>
+                        <select id="articleFormat" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                            <option value="Artikel Umum" selected>Artikel Umum</option>
+                            <option value="Khutbah">Khutbah/Pidato</option>
+                            <option value="Diskusi">Naskah Diskusi</option>
+                            <option value="Makalah">Makalah/Paper</option>
+                        </select>
+                    </div>
+
+                    <!-- Article Tone -->
+                    <div>
+                        <label for="articleTone" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Gaya Bahasa / Tone</label>
+                        <select id="articleTone" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                            <option value="Formal" selected>Formal</option>
+                            <option value="Semi-Formal">Semi-Formal</option>
+                            <option value="Santai">Santai</option>
+                        </select>
+                    </div>
 
                    <!-- Kitab Selection -->
 <div>
     <div class="flex items-center justify-between mb-2">
         <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Pilih Kitab Rujukan (RAG Database)</label>
         <div class="flex items-center gap-2">
+            <span class="text-slate-700">|</span>
+            <button type="button" id="toggleKitabBtn" onclick="toggleAllKitab()" class="text-[11px] text-slate-400 hover:text-slate-200">Pilih Semua</button>
+            <span class="text-slate-700">|</span>
             <button type="button" onclick="openAddKitabModal()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
                 <i class="fa-solid fa-plus text-[10px]"></i> Kitab Baru
             </button>
-            <span class="text-slate-700">|</span>
-            <button type="button" id="toggleKitabBtn" onclick="toggleAllKitab()" class="text-[11px] text-slate-400 hover:text-slate-200">Pilih Semua</button>
         </div>
     </div>
     
@@ -450,6 +492,10 @@
         e.preventDefault();
 
         const topic = document.getElementById('topicInput').value;
+        const articleType = document.getElementById('articleType').value;
+        const articleLength = document.getElementById('articleLength').value;
+        const articleFormat = document.getElementById('articleFormat').value;
+        const articleTone = document.getElementById('articleTone').value;
         const selectedKitab = Array.from(document.querySelectorAll('input[name="kitab"]:checked')).map(cb => cb.value);
 
         if (selectedKitab.length === 0) {
@@ -498,7 +544,7 @@
         setTimeout(() => {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('resultState').classList.remove('hidden');
-            renderGeneratedContent(topic, selectedKitab);
+            renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, selectedKitab);
             showToast('Artikel berhasil digenerate!');
         }, 3800);
     }
@@ -517,7 +563,7 @@
         document.getElementById('articleDate').innerText = today;
 
         // Content Dummy Generation
-        const articleHTML = `
+        let articleHTML = `
             <p class="first-letter:text-3xl first-letter:font-bold first-letter:text-emerald-400 first-letter:mr-1">
                 Dalam meninjau pembahasan mengenai <strong>${topic}</strong>, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama. Setiap fenomena sosial dan politik memerlukan landasan pemikiran yang jernih agar solusi yang dihasilkan bersifat mendasar dan tidak parsial.
             </p>
@@ -538,6 +584,20 @@
             </p>
         `;
 
+        // Add some dynamic content based on new selections
+        if (articleType === "Ilmiah/Akademis") {
+            articleHTML += `<p class="text-slate-300 text-sm leading-relaxed mt-4">Naskah ini disajikan dengan pendekatan ilmiah dan metodologi yang ketat, sesuai dengan standar akademis.</p>`;
+        }
+        if (articleFormat === "Khutbah") {
+            articleHTML = `
+                <p class="text-slate-300 text-sm leading-relaxed italic mb-4">
+                    (Pembukaan Khutbah: Segala puji bagi Allah, shalawat serta salam kepada Rasulullah SAW...)
+                </p>
+                ${articleHTML}
+                <p class="text-slate-300 text-sm leading-relaxed italic mt-4">(Penutup Khutbah: Semoga Allah SWT senantiasa membimbing kita semua...)</p>
+            `;
+        }
+
         document.getElementById('articleContent').innerHTML = articleHTML;
 
         // Render References
@@ -553,7 +613,11 @@
         currentArticle = {
             title: topic,
             content: `*${topic}*\n\nDalam meninjau pembahasan ini, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama.\n\n*Rujukan Kitab:* ${kitabList.join(', ')}`,
-            kitab: kitabList,
+            articleType: articleType, // This should be articleType
+            articleLength: articleLength,
+            articleFormat: articleFormat,
+            articleTone: articleTone,
+            kitab: kitabList, // This should probably be `references` or `kitabTitles`
             date: today
         };
     }
