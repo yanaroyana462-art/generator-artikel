@@ -135,6 +135,12 @@ class SaveArticleRequest(BaseModel):
     references: Optional[List[dict]] = []
     article_type: Optional[str] = "Umum"
 
+class GenerateHookRequest(BaseModel):
+    title: str
+    article_type: str
+    kitab_list: List[str]
+    link: str
+
 class TrackReaderRequest(BaseModel):
     name: str
     phone: Optional[str] = ""
@@ -287,6 +293,43 @@ PETUNJUK PENULISAN:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal menghasilkan artikel via Gemini API: {str(e)}")
+
+@app.post("/api/generate-hook")
+def generate_hook(payload: GenerateHookRequest):
+    """Menggunakan Gemini AI untuk membuat copywriter Hook Promosi WhatsApp yang unik"""
+    system_instruction = (
+        "Anda adalah seorang copywriter digital marketing handal yang berspesialisasi dalam "
+        "pemasaran konten Islami. Anda mahir membuat pesan promosi WhatsApp (hook) yang persuasif, "
+        "menggugah pikiran, dan mendorong pembaca untuk mengklik tautan rujukan."
+    )
+    
+    prompt = f"""
+Buatlah sebuah pesan promosi WhatsApp (Hook) yang sangat menarik untuk artikel berikut:
+Judul: {payload.title}
+Jenis Artikel: {payload.article_type}
+Rujukan Kitab: {", ".join(payload.kitab_list)}
+Tautan Landing Page: {payload.link}
+
+Aturan Penulisan:
+1. Gunakan gaya bahasa yang sesuai dengan Jenis Artikel ({payload.article_type}). Jika ilmiah, gunakan bahasa yang akademis namun provokatif secara intelektual. Jika ringan, gunakan gaya bercerita/storytelling yang mengalir dan hangat.
+2. Wajib sertakan emoji yang relevan di awal dan beberapa tempat di dalam pesan agar menarik secara visual.
+3. Buat pembaca penasaran dengan mengajukan pertanyaan kritis di bagian pembuka (problem/hook).
+4. Akhiri dengan Call to Action (CTA) yang jelas untuk membaca rujukan & artikel selengkapnya melalui link: {payload.link}
+5. Format pesan menggunakan sintaks tebal (*) dan miring (_) khas WhatsApp. Jangan gunakan format Markdown lain seperti heading (#) atau bullet point selain bullet standar (•).
+6. Berikan hasil pesan langsung tanpa kata pengantar atau teks penjelasan tambahan.
+"""
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.7, # Diberikan sedikit kreativitas
+            )
+        )
+        return {"success": True, "hook": response.text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menghasilkan hook promosi: {str(e)}")
 
 @app.post("/api/articles")
 def save_article(payload: SaveArticleRequest):

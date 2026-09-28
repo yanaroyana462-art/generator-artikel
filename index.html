@@ -230,9 +230,15 @@
                             <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                                 <i class="fa-solid fa-bullhorn animate-bounce"></i> Hook Promosi WhatsApp (Otomatis + Link LP)
                             </h4>
-                            <button onclick="copyHookToClipboard()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
-                                <i class="fa-regular fa-copy"></i> Salin Hook
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <button onclick="regenerateHook()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Generate Ulang
+                                </button>
+                                <span class="text-slate-800">|</span>
+                                <button onclick="copyHookToClipboard()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                                    <i class="fa-regular fa-copy"></i> Salin Hook
+                                </button>
+                            </div>
                         </div>
                         <textarea id="promoHookTextarea" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 font-mono resize-none" readonly>Membuat link LP & hook promosi...</textarea>
                     </div>
@@ -713,6 +719,102 @@
             kitab: kitabList,
             date: today
         };
+
+        generateAutoHook(topic, articleHTML, articleType, kitabList);
+    }
+
+    async function generateAutoHook(title, htmlContent, articleType, kitabList) {
+        const hookTextarea = document.getElementById('promoHookTextarea');
+        if (hookTextarea) hookTextarea.value = "Menghubungkan ke server untuk membuat link landing page...";
+
+        let articleId = 1;
+        try {
+            const res = await fetch("/api/articles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, content: htmlContent, article_type: articleType })
+            });
+            const resData = await res.json();
+            if (resData.success) articleId = resData.article_id;
+        } catch (err) {
+            console.error("Gagal mendaftarkan artikel otomatis untuk hook", err);
+        }
+
+        const lpLink = `${window.location.origin}${window.location.pathname}?read=${articleId}`;
+        
+        if (hookTextarea) hookTextarea.value = "Meminta Gemini AI menyusun Hook Promosi unik...";
+
+        try {
+            const hookRes = await fetch("/api/generate-hook", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: title,
+                    article_type: articleType,
+                    kitab_list: kitabList,
+                    link: lpLink
+                })
+            });
+            const hookData = await hookRes.json();
+            if (hookData.success && hookTextarea) {
+                hookTextarea.value = hookData.hook;
+            } else {
+                throw new Error("Gagal memuat hook dari API");
+            }
+        } catch (err) {
+            console.warn("Gagal menggunakan AI Hook, mengaktifkan template fallback lokal:", err);
+            let emoji = articleType === "Ringan" ? "💡" : (articleType === "Ilmiah/Akademis" ? "📚" : "🚨");
+            const fallbackText = `${emoji} *${title.toUpperCase()}* ${emoji}\n\n` +
+                `Bagaimana pandangan Islam kaffah menyikapi pembahasan ini secara mendalam berdasarkan rujukan kitab-kitab sahih pilihan?\n\n` +
+                `📖 *Baca Selengkapnya di Sini:* ${lpLink}\n\n` +
+                `_Silakan disebarluaskan untuk kemaslahatan umat._`;
+            if (hookTextarea) hookTextarea.value = fallbackText;
+        }
+
+        currentArticle.lpLink = lpLink;
+        currentArticle.id = articleId;
+    }
+
+    async function regenerateHook() {
+        const hookTextarea = document.getElementById('promoHookTextarea');
+        if (!currentArticle || !currentArticle.title) {
+            showToast("Belum ada artikel yang digenerate!");
+            return;
+        }
+
+        if (hookTextarea) hookTextarea.value = "Meminta Gemini AI menyusun Hook Promosi baru...";
+
+        const lpLink = currentArticle.lpLink || `${window.location.origin}${window.location.pathname}?read=${currentArticle.id || 1}`;
+
+        try {
+            const hookRes = await fetch("/api/generate-hook", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: currentArticle.title,
+                    article_type: currentArticle.articleType || "Umum",
+                    kitab_list: currentArticle.kitab || [],
+                    link: lpLink
+                })
+            });
+            const hookData = await hookRes.json();
+            if (hookData.success && hookTextarea) {
+                hookTextarea.value = hookData.hook;
+                showToast("Hook baru berhasil digenerate!");
+            } else {
+                throw new Error("Gagal memuat hook dari API");
+            }
+        } catch (err) {
+            console.error("Gagal melakukan regenerasi hook via AI", err);
+            showToast("Gagal melakukan regenerasi hook via AI.");
+        }
+    }
+
+    function copyHookToClipboard() {
+        const hookText = document.getElementById('promoHookTextarea').value;
+        navigator.clipboard.writeText(hookText).then(() => {
+            showToast('Hook promosi berhasil disalin ke clipboard!');
+        });
     }
 
     // ==========================================
