@@ -328,7 +328,7 @@
         <!-- ========================================== -->
         <!-- VIEW 4: PUBLIC READER MODE (LANDING PAGE)  -->
         <!-- ========================================== -->
-        <div id="public-reader-view" class="hidden max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative">
+        <div id="public-reader-view" class="hidden grid grid-cols-1 md:grid-cols-12 gap-6 relative">
             <div id="reader-gate-blur" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-3xl z-40 flex items-center justify-center p-6">
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
                     <i class="fa-solid fa-shield-halved text-emerald-400 text-4xl animate-pulse"></i>
@@ -343,10 +343,31 @@
                     </form>
                 </div>
             </div>
-            <article class="space-y-6">
-                <h1 id="publicArticleTitle" class="text-2xl font-black text-slate-100 leading-tight"></h1>
-                <div id="publicArticleContent" class="text-slate-300 text-sm leading-relaxed space-y-4"></div>
-            </article>
+
+            <!-- SIDEBAR ARTIKEL -->
+            <div class="md:col-span-4 bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl h-fit max-h-[600px] overflow-y-auto">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-list-ul text-emerald-400"></i> Artikel Lainnya
+                </h3>
+                <!-- KOLOM PENCARIAN -->
+                <div class="mb-4 relative">
+                    <input type="text" id="searchArticleInput" oninput="filterPublicArticles()" placeholder="Cari artikel..." class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+                </div>
+                <div id="publicArticleList" class="space-y-2">
+                    <!-- List of other articles dynamically loaded -->
+                </div>
+            </div>
+
+            <!-- KONTEN ARTIKEL -->
+            <div class="md:col-span-8 bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
+                <article class="space-y-6">
+                    <div id="publicArticleBadge" class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium hidden">
+                    </div>
+                    <h1 id="publicArticleTitle" class="text-2xl font-black text-slate-100 leading-tight"></h1>
+                    <div id="publicArticleContent" class="text-slate-300 text-sm leading-relaxed space-y-4"></div>
+                </article>
+            </div>
         </div>
 
     </main>
@@ -608,7 +629,7 @@
         }, 3800);
     }
 
-    function renderGeneratedContent(topic, kitabList) {
+    function renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, kitabList) {
         const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'Long', year: 'numeric' });
         
         // Render Badges Kitab
@@ -671,12 +692,12 @@
         // Save State for Sharing
         currentArticle = {
             title: topic,
-            content: `*${topic}*\n\nDalam meninjau pembahasan ini, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama.\n\n*Rujukan Kitab:* ${kitabList.join(', ')}`,
+            content: articleHTML,
             articleType: articleType, // This should be articleType
             articleLength: articleLength,
             articleFormat: articleFormat,
             articleTone: articleTone,
-            kitab: kitabList, // This should probably be `references` or `kitabTitles`
+            kitab: kitabList,
             date: today
         };
     }
@@ -856,7 +877,7 @@
             const res = await fetch("/api/articles", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, content: htmlContent })
+                body: JSON.stringify({ title, content: htmlContent, article_type: currentArticle.articleType || "Umum" })
             });
             const resData = await res.json();
             if (resData.success) articleId = resData.article_id;
@@ -1056,6 +1077,7 @@ function deleteKitab(event, id) {
 // 8. LINK GATING SYSTEM & PUBLIC VIEW MODE
 // ==========================================
 let activeArticleId = null;
+let loadedPublicArticles = [];
 
 async function checkPublicReaderMode() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1069,11 +1091,99 @@ async function checkPublicReaderMode() {
         document.getElementById('whatsapp-view').classList.add('hidden');
         document.getElementById('readers-view').classList.add('hidden');
         document.querySelector('main').classList.remove('max-w-7xl');
-        document.querySelector('main').classList.add('max-w-3xl');
+        document.querySelector('main').classList.add('max-w-6xl');
 
         // Tampilkan view baca publik
         document.getElementById('public-reader-view').classList.remove('hidden');
         
+        if (localStorage.getItem('reader_unlocked') === 'true') {
+            const gate = document.getElementById('reader-gate-blur');
+            if (gate) gate.classList.add('hidden');
+        }
+
+        await loadPublicArticle(readId);
+        await loadPublicArticlesSidebar();
+    }
+}
+
+async function loadPublicArticle(articleId) {
+    activeArticleId = articleId;
+    try {
+        const res = await fetch(`/api/articles/${articleId}`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('publicArticleTitle').innerText = data.data.title;
+            document.getElementById('publicArticleContent').innerHTML = data.data.content;
+            
+            const badge = document.getElementById('publicArticleBadge');
+            if (data.data.article_type) {
+                badge.innerText = data.data.article_type;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    } catch (err) {
+        document.getElementById('publicArticleTitle').innerText = "Artikel Tidak Ditemukan";
+        document.getElementById('publicArticleContent').innerHTML = "<p class='text-slate-500'>Tautan tidak valid atau artikel telah dihapus.</p>";
+        document.getElementById('reader-gate-blur').classList.add('hidden');
+    }
+}
+
+async function loadPublicArticlesSidebar() {
+    try {
+        const res = await fetch("/api/articles");
+        const data = await res.json();
+        if (data.success) {
+            loadedPublicArticles = data.data;
+            renderPublicArticles(loadedPublicArticles);
+        }
+    } catch (err) {
+        console.error("Gagal memuat daftar artikel sidebar:", err);
+    }
+}
+
+function renderPublicArticles(articles) {
+    const container = document.getElementById('publicArticleList');
+    if (!container) return;
+
+    if (articles.length > 0) {
+        container.innerHTML = articles.map(art => {
+            const isActive = art.id == activeArticleId;
+            const activeClass = isActive 
+                ? 'border-emerald-500 bg-emerald-950/20' 
+                : 'border-slate-800 hover:border-slate-700 bg-slate-950/40';
+            
+            return `
+                <div onclick="selectPublicArticle(${art.id})" class="p-3 rounded-xl border cursor-pointer transition-all ${activeClass}">
+                    <div class="text-xs font-semibold text-slate-200 line-clamp-2">${art.title}</div>
+                    ${art.article_type ? `<div class="text-[10px] text-emerald-400 mt-1 font-medium"><i class="fa-solid fa-tags text-[8px] mr-1"></i>${art.article_type}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    } else {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Tidak ada artikel yang cocok.</p>`;
+    }
+}
+
+function filterPublicArticles() {
+    const query = document.getElementById('searchArticleInput').value.toLowerCase().trim();
+    const filtered = loadedPublicArticles.filter(art => {
+        const titleMatch = art.title ? art.title.toLowerCase().includes(query) : false;
+        const typeMatch = art.article_type ? art.article_type.toLowerCase().includes(query) : false;
+        return titleMatch || typeMatch;
+    });
+    renderPublicArticles(filtered);
+}
+
+function selectPublicArticle(id) {
+    const url = new URL(window.location);
+    url.searchParams.set('read', id);
+    window.history.pushState({}, '', url);
+    
+    loadPublicArticle(id);
+    loadPublicArticlesSidebar();
+}
         try {
             const res = await fetch(`/api/articles/${readId}`);
             const data = await res.json();
@@ -1104,6 +1214,7 @@ async function unlockArticle(e) {
         if (data.success) {
             document.getElementById('reader-gate-blur').classList.add('hidden');
             showToast("Akses artikel dibuka. Selamat membaca!");
+            localStorage.setItem('reader_unlocked', 'true');
         }
     } catch (err) {
         alert("Koneksi gagal, silakan coba lagi.");

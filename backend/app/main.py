@@ -58,6 +58,7 @@ def startup_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            cursor.execute("ALTER TABLE shared_articles ADD COLUMN IF NOT EXISTS article_type TEXT;")
             # Tabel pelacak aktivitas pembaca (Leads Database)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS readers (
@@ -132,6 +133,7 @@ class SaveArticleRequest(BaseModel):
     title: str
     content: str
     references: Optional[List[dict]] = []
+    article_type: Optional[str] = "Umum"
 
 class TrackReaderRequest(BaseModel):
     name: str
@@ -293,8 +295,8 @@ def save_article(payload: SaveArticleRequest):
     try:
         with conn.cursor() as cursor:
             cursor.execute(
-                "INSERT INTO shared_articles (title, content, references_json) VALUES (%s, %s, %s) RETURNING id;",
-                (payload.title, payload.content, json.dumps(payload.references))
+                "INSERT INTO shared_articles (title, content, references_json, article_type) VALUES (%s, %s, %s, %s) RETURNING id;",
+                (payload.title, payload.content, json.dumps(payload.references), payload.article_type)
             )
             article_id = cursor.fetchone()['id']
             conn.commit()
@@ -304,13 +306,25 @@ def save_article(payload: SaveArticleRequest):
     finally:
         conn.close()
 
+@app.get("/api/articles")
+def list_articles():
+    """Mengambil daftar semua artikel publik yang disimpan"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, title, article_type, created_at FROM shared_articles ORDER BY created_at DESC;")
+            articles = cursor.fetchall()
+            return {"success": True, "data": articles}
+    finally:
+        conn.close()
+
 @app.get("/api/articles/{article_id}")
 def get_article(article_id: int):
     """Mengambil data artikel publik berdasarkan ID"""
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id, title, content, references_json FROM shared_articles WHERE id = %s;", (article_id,))
+            cursor.execute("SELECT id, title, content, references_json, article_type FROM shared_articles WHERE id = %s;", (article_id,))
             article = cursor.fetchone()
             if not article:
                 raise HTTPException(status_code=404, detail="Artikel tidak ditemukan")
