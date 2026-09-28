@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artikel Generator - RAG Content Engine</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- NAVBAR HEADER -->
+    <header class="bg-slate-900/80 border-b border-slate-800 backdrop-blur sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-950">
+                    <i class="fa-solid fa-feather-pointed text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight text-slate-100">RAG Content Engine</h1>
+                    <p class="text-[11px] text-emerald-400 font-medium">Artikel & Ideologis Generator</p>
+                </div>
+            </div>
+
+            <!-- Desktop Tab Buttons -->
+            <nav class="hidden md:flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+                <button id="tab-generator" onclick="switchTab('generator')" class="px-4 py-2 rounded-lg bg-emerald-600 text-white shadow-md transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generator Artikel
+                </button>
+                <button id="tab-whatsapp" onclick="switchTab('whatsapp')" class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp"></i> Database WA
+                </button>
+            </nav>
+
+            <button onclick="resetApp()" class="text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1.5 bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/50 transition-all">
+                <i class="fa-solid fa-rotate-left"></i> Reset App
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+
+        <!-- ========================================== -->
+        <!-- VIEW 1: GENERATOR ARTIKEL                  -->
+        <!-- ========================================== -->
+        <div id="generator-view" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- LEFT PANEL: FORM INPUT -->
+            <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+                <form id="generatorForm" onsubmit="handleGenerate(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Topik / Tema Artikel</label>
+                        <textarea id="topicInput" rows="3" required placeholder="Contoh: Tantangan Pemuda dan Peran Pemikiran Islam dalam Era Digital..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all resize-none"></textarea>
+                        
+                        <!-- Quick Prompts -->
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            <span class="text-[11px] text-slate-500 py-0.5">Contoh:</span>
+                            <button type="button" onclick="fillExample('Peran Pemikiran Islam dalam Menyikapi Krisis Global')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700/50 transition-colors">Krisis Global</button>
+                            <button type="button" onclick="fillExample('Pentingnya Pembinaan Kepribadian Islam bagi Generasi Muda')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700/50 transition-colors">Generasi Muda</button>
+                        </div>
+                    </div>
+
+                   <!-- Kitab Selection -->
+<div>
+    <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Pilih Kitab Rujukan (RAG Database)</label>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="openAddKitabModal()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-plus text-[10px]"></i> Kitab Baru
+            </button>
+            <span class="text-slate-700">|</span>
+            <button type="button" id="toggleKitabBtn" onclick="toggleAllKitab()" class="text-[11px] text-slate-400 hover:text-slate-200">Pilih Semua</button>
+        </div>
+    </div>
+    
+    <!-- Container Daftar Kitab Dinamis -->
+    <div id="kitabListContainer" class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
+        <!-- Daftar kitab akan di-render otomatis dari JavaScript / LocalStorage -->
+    </div>
+</div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-2 flex gap-3">
+                        <button type="submit" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Artikel
+                        </button>
+                        <button type="button" onclick="resetForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-3 px-4 rounded-xl border border-slate-700/50 transition-colors">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIGHT PANEL: OUTPUT & RENDER -->
+            <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[500px]">
+                
+                <!-- State 1: EMPTY STATE -->
+                <div id="emptyState" class="my-auto text-center py-12">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-800 text-slate-500 flex items-center justify-center mx-auto mb-4 text-2xl border border-slate-700/50">
+                        <i class="fa-solid fa-newspaper"></i>
+                    </div>
+                    <h3 class="text-slate-300 font-semibold text-base mb-1">Belum Ada Artikel Dihasilkan</h3>
+                    <p class="text-slate-500 text-xs max-w-sm mx-auto">Isi topik artikel di panel sebelah kiri dan pilih kitab rujukan untuk mulai menghasilkan naskah.</p>
+                </div>
+
+                <!-- State 2: LOADING STATE (RAG Engine Simulator) -->
+                <div id="loadingState" class="hidden my-auto py-12">
+                    <div class="max-w-md mx-auto space-y-6">
+                        <div class="text-center">
+                            <div class="inline-block p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/20 mb-3">
+                                <i class="fa-solid fa-microchip text-emerald-400 text-3xl animate-pulse"></i>
+                            </div>
+                            <h4 class="text-slate-200 font-semibold text-sm">RAG Engine Sedang Bekerja</h4>
+                            <p class="text-slate-500 text-xs mt-1">Mengambil konteks vektor & menyusun narasi artikel...</p>
+                        </div>
+
+                        <!-- Step Checklist -->
+                        <div class="bg-slate-950 rounded-xl p-4 border border-slate-800/80 space-y-3 text-xs">
+                            <div id="step1" class="flex items-center gap-3 text-slate-600 transition-all">
+                                <i class="fa-regular fa-circle"></i> <span>Melakukan Pencarian Vektor (Semantic Search)...</span>
+                            </div>
+                            <div id="step2" class="flex items-center gap-3 text-slate-600 transition-all">
+                                <i class="fa-regular fa-circle"></i> <span>Mencocokkan Kutipan & Bab Kitab...</span>
+                            </div>
+                            <div id="step3" class="flex items-center gap-3 text-slate-600 transition-all">
+                                <i class="fa-regular fa-circle"></i> <span>Menyusun Alur Narrative & Format Artikel...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- State 3: RESULT STATE -->
+                <div id="resultState" class="hidden flex-1 flex flex-col justify-between space-y-6">
+                    <div>
+                        <!-- Header Result -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-800">
+                            <div id="kitabBadges" class="flex flex-wrap gap-1.5">
+                                <!-- Badges akan dimasukkan secara dinamis via JS -->
+                            </div>
+                            <div class="text-[11px] text-slate-500 font-mono" id="articleDate">29 September 2026</div>
+                        </div>
+
+                        <!-- Article Content Display -->
+                        <div class="mt-4">
+                            <h2 id="articleTitle" class="text-xl font-bold text-slate-100 mb-4 leading-snug"></h2>
+                            <div id="articleContent" class="text-slate-300 text-sm space-y-4 leading-relaxed font-sans">
+                                <!-- Isi Konten Hasil Generasi JS -->
+                            </div>
+                        </div>
+
+                        <!-- Rujukan Kitab Footnote -->
+                        <div class="mt-8 pt-4 border-t border-slate-800/80 bg-slate-950/40 -mx-6 -mb-6 p-6 rounded-b-2xl">
+                            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-book-bookmark text-emerald-400"></i> Referensi Kitab Matched:
+                            </h4>
+                            <ul id="referenceList" class="text-xs text-slate-400 space-y-1.5">
+                                <!-- List Referensi via JS -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Result Action Tools -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <button onclick="copyArticleToClipboard()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5">
+                                <i class="fa-regular fa-copy"></i> Salin Teks
+                            </button>
+                            <button onclick="exportMarkdown()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5">
+                                <i class="fa-regular fa-file-code"></i> Export .MD
+                            </button>
+                            <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5">
+                                <i class="fa-solid fa-print"></i> Cetak/PDF
+                            </button>
+                        </div>
+                        <button onclick="openShareModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-emerald-950/50 transition-colors flex items-center gap-2">
+                            <i class="fa-brands fa-whatsapp"></i> Broadcast Ke WA
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: DATABASE WHATSAPP                  -->
+        <!-- ========================================== -->
+        <div id="whatsapp-view" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Form Tambah Kontak -->
+            <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit">
+                <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-emerald-400"></i> Tambah Kontak WA
+                </h3>
+                <form onsubmit="addContact(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Nama Penerima / Kontak</label>
+                        <input type="text" id="contactName" required placeholder="Ustadz / Rekan..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Nomor WA (Gunakan 628... / 08...)</label>
+                        <input type="text" id="contactPhone" required placeholder="628123456789" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500 transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Kontak
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tabel Daftar Kontak -->
+            <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-address-book text-emerald-400"></i> Daftar Kontak Tersimpan
+                    </h3>
+                    <span id="contactCount" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">0 Kontak</span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider">
+                            <tr>
+                                <th class="p-3">Nama</th>
+                                <th class="p-3">Nomor WhatsApp</th>
+                                <th class="p-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contactTableBody" class="divide-y divide-slate-800/50">
+                            <!-- Data Kontak Di-render JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL TAMBAH KITAB / UPLOAD PDF -->
+    <div id="addKitabModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-emerald-400"></i> Unggah Kitab Rujukan (PDF/TXT)
+                </h3>
+                <button onclick="closeAddKitabModal()" class="text-slate-500 hover:text-slate-300">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleAddKitab(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Judul / Nama Kitab</label>
+                    <input type="text" id="newKitabTitle" required placeholder="Contoh: Ajheza Darul Islam" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                </div>
+
+                <!-- Drag and Drop Zone / File Input -->
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Pilih Berkas Kitab (.pdf, .txt)</label>
+                    <div class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 rounded-xl p-4 text-center bg-slate-950/50 transition-colors cursor-pointer relative">
+                        <input type="file" id="newKitabFile" accept=".pdf,.txt" required onchange="updateFileName(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <div id="uploadPlaceholder" class="space-y-1">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-emerald-400"></i>
+                            <p class="text-xs text-slate-300 font-medium">Klik atau tarik berkas PDF/TXT ke sini</p>
+                            <p class="text-[10px] text-slate-500">Maksimal berkas diproses lokal browser</p>
+                        </div>
+                        <div id="fileSelectedInfo" class="hidden text-xs text-emerald-400 font-medium flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-lines"></i> <span id="fileNameText"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Keterangan / Catatan Tambahan (Opsional)</label>
+                    <input type="text" id="newKitabDesc" placeholder="Contoh: Versi terjemahan resmi 2024" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition-all">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddKitabModal()" class="bg-slate-800 text-slate-300 text-xs px-3 py-2 rounded-xl border border-slate-700">Batal</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-upload"></i> Unggah & Indeks
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MOBILE NAVIGATION BOTTOM BAR -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur border-t border-slate-800 p-2 flex gap-2 z-20">
+        <button id="tab-generator-mobile" onclick="switchTab('generator')" class="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-medium flex items-center justify-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Generator
+        </button>
+        <button id="tab-whatsapp-mobile" onclick="switchTab('whatsapp')" class="flex-1 py-2 rounded-xl text-slate-400 text-xs font-medium flex items-center justify-center gap-2">
+            <i class="fa-brands fa-whatsapp"></i> Database WA
+        </button>
+    </div>
+
+    <!-- MODAL BROADCAST SHARE WHATSAPP -->
+    <div id="shareModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-emerald-400 text-lg"></i> Kirim Artikel via WhatsApp
+                </h3>
+                <button onclick="closeShareModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <span>Pilih Kontak Penerima:</span>
+                <label class="flex items-center gap-1.5 cursor-pointer text-emerald-400">
+                    <input type="checkbox" onchange="toggleAllShareContacts(this)" class="rounded border-slate-700 bg-slate-900 text-emerald-500">
+                    <span>Pilih Semua</span>
+                </label>
+            </div>
+
+            <!-- List Kontak di Modal -->
+            <div id="modalContactList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <!-- Di-render via JS -->
+            </div>
+
+            <div class="pt-2 flex items-center justify-between border-t border-slate-800">
+                <span id="selectedShareCount" class="text-xs text-slate-400 font-medium">0 Terpilih</span>
+                <div class="flex gap-2">
+                    <button onclick="closeShareModal()" class="bg-slate-800 text-slate-300 text-xs px-3 py-2 rounded-xl border border-slate-700">Batal</button>
+                    <button id="broadcastBtn" onclick="executeBroadcast()" disabled class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim (<span id="btnShareCount">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-16 md:bottom-6 right-6 bg-emerald-950 border border-emerald-500/40 text-emerald-200 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 transition-all transform translate-y-20 opacity-0 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toastMsg">Notifikasi...</span>
+    </div>
+<script>
+    // ==========================================
+    // 1. STATE & INITIALIZATION
+    // ==========================================
+    let contacts = JSON.parse(localStorage.getItem('wa_contacts')) || [
+        { id: 1, name: 'Ahmad Fauzi', phone: '628123456789' },
+        { id: 2, name: 'Ustadz Ridwan', phone: '628987654321' }
+    ];
+
+    let currentArticle = {
+        title: '',
+        content: '',
+        kitab: [],
+        date: ''
+    };
+
+    // ==========================================
+    // 2. NAVIGATION & TAB SWITCHING
+    // ==========================================
+    function switchTab(tab) {
+        const generatorView = document.getElementById('generator-view');
+        const whatsappView = document.getElementById('whatsapp-view');
+        
+        // Desktop Tab Buttons
+        const tabGen = document.getElementById('tab-generator');
+        const tabWA = document.getElementById('tab-whatsapp');
+        
+        // Mobile Tab Buttons
+        const tabGenMob = document.getElementById('tab-generator-mobile');
+        const tabWAMob = document.getElementById('tab-whatsapp-mobile');
+
+        if (tab === 'generator') {
+            generatorView.classList.remove('hidden');
+            whatsappView.classList.add('hidden');
+
+            // Style Active Generator
+            tabGen?.classList.add('bg-emerald-600', 'text-white', 'shadow-md');
+            tabGen?.classList.remove('text-slate-400');
+            tabWA?.classList.remove('bg-emerald-600', 'text-white', 'shadow-md');
+            tabWA?.classList.add('text-slate-400');
+
+            tabGenMob?.classList.add('bg-emerald-600', 'text-white');
+            tabGenMob?.classList.remove('text-slate-400');
+            tabWAMob?.classList.remove('bg-emerald-600', 'text-white');
+            tabWAMob?.classList.add('text-slate-400');
+        } else {
+            generatorView.classList.add('hidden');
+            whatsappView.classList.remove('hidden');
+
+            // Style Active WhatsApp
+            tabWA?.classList.add('bg-emerald-600', 'text-white', 'shadow-md');
+            tabWA?.classList.remove('text-slate-400');
+            tabGen?.classList.remove('bg-emerald-600', 'text-white', 'shadow-md');
+            tabGen?.classList.add('text-slate-400');
+
+            tabWAMob?.classList.add('bg-emerald-600', 'text-white');
+            tabWAMob?.classList.remove('text-slate-400');
+            tabGenMob?.classList.remove('bg-emerald-600', 'text-white');
+            tabGenMob?.classList.add('text-slate-400');
+        }
+    }
+
+    // Toggle Checkbox Kitab
+    let allKitabChecked = false;
+    function toggleAllKitab() {
+        const checkboxes = document.querySelectorAll('input[name="kitab"]');
+        const btn = document.getElementById('toggleKitabBtn');
+        allKitabChecked = !allKitabChecked;
+
+        checkboxes.forEach(cb => cb.checked = allKitabChecked);
+        btn.innerText = allKitabChecked ? 'Hapus Semua' : 'Pilih Semua';
+    }
+
+    // Isi Otomatis Contoh Prompt
+    function fillExample(topicText) {
+        document.getElementById('topicInput').value = topicText;
+        showToast('Topik contoh berhasil dimuat!');
+    }
+
+    function resetForm() {
+        document.getElementById('generatorForm').reset();
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('resultState').classList.add('hidden');
+        showToast('Formulir berhasil direset.');
+    }
+
+    function resetApp() {
+        resetForm();
+    }
+
+    // ==========================================
+    // 3. GENERATOR ENGINE (RAG SIMULATOR)
+    // ==========================================
+    function handleGenerate(e) {
+        e.preventDefault();
+
+        const topic = document.getElementById('topicInput').value;
+        const selectedKitab = Array.from(document.querySelectorAll('input[name="kitab"]:checked')).map(cb => cb.value);
+
+        if (selectedKitab.length === 0) {
+            alert('Harap pilih minimal satu kitab rujukan!');
+            return;
+        }
+
+        // 1. Tampilkan Loading State
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('resultState').classList.add('hidden');
+        document.getElementById('loadingState').classList.remove('hidden');
+
+        // Reset indikator langkah RAG
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+
+        step1.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
+        step1.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Melakukan Pencarian Vektor (Semantic Search)...</span>`;
+        
+        step2.className = "flex items-center gap-3 text-slate-600 transition-all";
+        step2.innerHTML = `<i class="fa-regular fa-circle"></i> <span>Mencocokkan Kutipan & Bab Kitab...</span>`;
+        
+        step3.className = "flex items-center gap-3 text-slate-600 transition-all";
+        step3.innerHTML = `<i class="fa-regular fa-circle"></i> <span>Menyusun Alur Narrative & Format Artikel...</span>`;
+
+        // Simulasi Step 2
+        setTimeout(() => {
+            step1.className = "flex items-center gap-3 text-emerald-500/80 transition-all";
+            step1.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>Pencarian Vektor Selesai.</span>`;
+
+            step2.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
+            step2.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Mencocokkan Kutipan & Bab Kitab...</span>`;
+        }, 1200);
+
+        // Simulasi Step 3
+        setTimeout(() => {
+            step2.className = "flex items-center gap-3 text-emerald-500/80 transition-all";
+            step2.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>Kutipan Berhasil Ditemukan.</span>`;
+
+            step3.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
+            step3.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Menyusun Alur Narrative & Format Artikel...</span>`;
+        }, 2500);
+
+        // Render Hasil Akhir
+        setTimeout(() => {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultState').classList.remove('hidden');
+            renderGeneratedContent(topic, selectedKitab);
+            showToast('Artikel berhasil digenerate!');
+        }, 3800);
+    }
+
+    function renderGeneratedContent(topic, kitabList) {
+        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'Long', year: 'numeric' });
+        
+        // Render Badges Kitab
+        const badgesContainer = document.getElementById('kitabBadges');
+        badgesContainer.innerHTML = kitabList.map(k => 
+            `<span class="px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">${k}</span>`
+        ).join('');
+
+        // Render Title & Date
+        document.getElementById('articleTitle').innerText = topic;
+        document.getElementById('articleDate').innerText = today;
+
+        // Content Dummy Generation
+        const articleHTML = `
+            <p class="first-letter:text-3xl first-letter:font-bold first-letter:text-emerald-400 first-letter:mr-1">
+                Dalam meninjau pembahasan mengenai <strong>${topic}</strong>, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama. Setiap fenomena sosial dan politik memerlukan landasan pemikiran yang jernih agar solusi yang dihasilkan bersifat mendasar dan tidak parsial.
+            </p>
+            <h3 class="text-lg font-semibold text-slate-100 border-l-4 border-emerald-500 pl-3 my-3">
+                1. Mendasarkan Pandangan pada Asas Islam
+            </h3>
+            <p>
+                Landasan utama dalam menyikapi persoalan ini tercantum dalam pembahasan kitab rujukan, di mana standar perbuatan dan penilaian harus senantiasa terikat pada hukum syara. Memahami problematika ini secara fundamental akan mengarahkan ummah pada solusi yang sahih.
+            </p>
+            <blockquote class="bg-slate-950/80 border-l-2 border-teal-500 p-4 rounded-r-xl italic text-slate-300 my-4 text-sm">
+                "Pemikiran yang terpancar dari aqidah Islam merupakan asas bagi seluruh bentuk pandangan hidup, kebijakan, serta metode penyelesaian masalah ummah."
+            </blockquote>
+            <h3 class="text-lg font-semibold text-slate-100 border-l-4 border-emerald-500 pl-3 my-3">
+                2. Analisis & Kesimpulan
+            </h3>
+            <p>
+                Dengan demikian, penerapan konsep-konsep tersebut dalam realitas saat ini menuntut kesadaran kolektif untuk kembali pada aturan yang bersumber dari wahyu, guna mewujudkan tatanan kehidupan yang harmonis dan adil.
+            </p>
+        `;
+
+        document.getElementById('articleContent').innerHTML = articleHTML;
+
+        // Render References
+        const refList = document.getElementById('referenceList');
+        refList.innerHTML = kitabList.map(k => 
+            `<li class="flex items-start gap-2">
+                <i class="fa-solid fa-angle-right text-emerald-400 mt-0.5"></i>
+                <span><strong>${k}</strong> — Bab Penjelasan Landasan & Hukum Syara' (Indeks Vektor Matched)</span>
+            </li>`
+        ).join('');
+
+        // Save State for Sharing
+        currentArticle = {
+            title: topic,
+            content: `*${topic}*\n\nDalam meninjau pembahasan ini, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama.\n\n*Rujukan Kitab:* ${kitabList.join(', ')}`,
+            kitab: kitabList,
+            date: today
+        };
+    }
+
+    // ==========================================
+    // 4. EXPORT & COPY ACTIONS
+    // ==========================================
+    function copyArticleToClipboard() {
+        const title = document.getElementById('articleTitle').innerText;
+        const bodyText = document.getElementById('articleContent').innerText;
+        const textToCopy = `${title}\n\n${bodyText}`;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showToast('Teks artikel berhasil disalin!');
+        });
+    }
+
+    function exportMarkdown() {
+        const title = document.getElementById('articleTitle').innerText;
+        const bodyText = document.getElementById('articleContent').innerText;
+        const mdContent = `# ${title}\n\n${bodyText}`;
+
+        const blob = new Blob([mdContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('File Markdown berhasil diunduh!');
+    }
+
+    // ==========================================
+    // 5. WHATSAPP CONTACT MANAGEMENT
+    // ==========================================
+    function renderContacts() {
+        const tbody = document.getElementById('contactTableBody');
+        const countSpan = document.getElementById('contactCount');
+        
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        countSpan.innerText = `${contacts.length} Kontak`;
+
+        if (contacts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Belum ada kontak tersimpan.</td></tr>`;
+            return;
+        }
+
+        contacts.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-900/60 transition-colors border-b border-slate-800/50";
+            tr.innerHTML = `
+                <td class="p-3 font-medium text-slate-200">${c.name}</td>
+                <td class="p-3 text-slate-400 font-mono text-[11px]">${c.phone}</td>
+                <td class="p-3 text-center">
+                    <button onclick="deleteContact(${c.id})" class="text-rose-400 hover:text-rose-300 p-1 transition-colors">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        localStorage.setItem('wa_contacts', JSON.stringify(contacts));
+    }
+
+    function addContact(e) {
+        e.preventDefault();
+        const nameInput = document.getElementById('contactName');
+        const phoneInput = document.getElementById('contactPhone');
+
+        let phone = phoneInput.value.replace(/[^0-9]/g, '');
+        if (phone.startsWith('0')) {
+            phone = '62' + phone.slice(1);
+        }
+
+        const newContact = {
+            id: Date.now(),
+            name: nameInput.value,
+            phone: phone
+        };
+
+        contacts.push(newContact);
+        renderContacts();
+
+        nameInput.value = '';
+        phoneInput.value = '';
+        showToast('Kontak berhasil disimpan!');
+    }
+
+    function deleteContact(id) {
+        contacts = contacts.filter(c => c.id !== id);
+        renderContacts();
+        showToast('Kontak berhasil dihapus.');
+    }
+
+    // ==========================================
+    // 6. WHATSAPP SHARE & BROADCAST MODAL
+    // ==========================================
+    function openShareModal() {
+        const modal = document.getElementById('shareModal');
+        const listContainer = document.getElementById('modalContactList');
+        modal.classList.remove('hidden');
+
+        listContainer.innerHTML = '';
+
+        if (contacts.length === 0) {
+            listContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Database kontak WA masih kosong. Silakan tambahkan di tab "Database WA".</p>`;
+            return;
+        }
+
+        contacts.forEach(c => {
+            const item = document.createElement('div');
+            item.className = "flex items-center justify-between bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition-colors";
+            item.innerHTML = `
+                <label class="flex items-center gap-2.5 cursor-pointer text-xs text-slate-200 w-full">
+                    <input type="checkbox" name="share_contact" value="${c.phone}" onchange="updateShareCount()" class="share-checkbox rounded border-slate-700 bg-slate-900 text-emerald-500">
+                    <span><strong>${c.name}</strong> <span class="text-slate-500 text-[10px]">(${c.phone})</span></span>
+                </label>
+            `;
+            listContainer.appendChild(item);
+        });
+
+        updateShareCount();
+    }
+
+    function closeShareModal() {
+        document.getElementById('shareModal').classList.add('hidden');
+    }
+
+    function toggleAllShareContacts(masterCb) {
+        const checkboxes = document.querySelectorAll('.share-checkbox');
+        checkboxes.forEach(cb => cb.checked = masterCb.checked);
+        updateShareCount();
+    }
+
+    function updateShareCount() {
+        const selected = document.querySelectorAll('.share-checkbox:checked');
+        const count = selected.length;
+        
+        document.getElementById('selectedShareCount').innerText = `${count} Terpilih`;
+        document.getElementById('btnShareCount').innerText = count;
+
+        const broadcastBtn = document.getElementById('broadcastBtn');
+        broadcastBtn.disabled = count === 0;
+    }
+
+    function executeBroadcast() {
+        const selectedCbs = document.querySelectorAll('.share-checkbox:checked');
+        if (selectedCbs.length === 0) return;
+
+        const textMessage = encodeURIComponent(`${currentArticle.content}\n\n_Diproduksi via Artikel Generator RAG Engine_`);
+
+        selectedCbs.forEach((cb, idx) => {
+            const phone = cb.value;
+            const waUrl = `https://wa.me/${phone}?text=${textMessage}`;
+
+            // Buka tab baru berkala agar tidak terblokir popup blocker
+            setTimeout(() => {
+                window.open(waUrl, '_blank');
+            }, idx * 800);
+        });
+
+        closeShareModal();
+        showToast(`Membuka ${selectedCbs.length} tautan WhatsApp...`);
+    }
+
+    // ==========================================
+    // 7. TOAST NOTIFICATION SYSTEM
+    // ==========================================
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+        
+        if (!toast || !toastMsg) return;
+
+        toastMsg.innerText = message;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+    // ==========================================
+// KELOLA DATABASE KITAB RUJUKAN (LOCAL STORAGE)
+// ==========================================
+let kitabDatabase = JSON.parse(localStorage.getItem('rag_kitab_db')) || [
+    { id: 1, title: 'Nizhamul Islam', desc: 'Sistem Kehidupan dalam Islam', checked: true },
+    { id: 2, title: 'Mafahim Hizbut Tahrir', desc: 'Konsep-Konsep Dasar Pemikiran', checked: true },
+    { id: 3, title: 'At-Takatul A-Hizbi', desc: 'Pembentukan Kelompok & Dakwah', checked: false }
+];
+
+// Render Kitab ke UI
+function renderKitabList() {
+    const container = document.getElementById('kitabListContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    kitabDatabase.forEach(k => {
+        const item = document.createElement('label');
+        item.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 cursor-pointer transition-colors group";
+        item.innerHTML = `
+            <div class="flex items-center gap-3">
+                <input type="checkbox" name="kitab" value="${k.title}" ${k.checked ? 'checked' : ''} class="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0 focus:ring-offset-0">
+                <div>
+                    <div class="text-xs font-medium text-slate-200">${k.title}</div>
+                    <div class="text-[10px] text-slate-500">${k.desc}</div>
+                </div>
+            </div>
+            ${kitabDatabase.length > 1 ? `
+            <button type="button" onclick="deleteKitab(event, ${k.id})" class="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 p-1 transition-all">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>` : ''}
+        `;
+        container.appendChild(item);
+    });
+
+    localStorage.setItem('rag_kitab_db', JSON.stringify(kitabDatabase));
+}
+
+function openAddKitabModal() {
+    document.getElementById('addKitabModal').classList.remove('hidden');
+}
+
+// Menampilkan nama file saat dipilih
+function updateFileName(input) {
+    const placeholder = document.getElementById('uploadPlaceholder');
+    const info = document.getElementById('fileSelectedInfo');
+    const nameText = document.getElementById('fileNameText');
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        nameText.innerText = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        placeholder.classList.add('hidden');
+        info.classList.remove('hidden');
+    } else {
+        placeholder.classList.remove('hidden');
+        info.classList.add('hidden');
+    }
+}
+
+// Menangani Submit Form Kitab dengan File
+function handleAddKitab(e) {
+    e.preventDefault();
+    const title = document.getElementById('newKitabTitle').value.trim();
+    const desc = document.getElementById('newKitabDesc').value.trim();
+    const fileInput = document.getElementById('newKitabFile');
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Harap pilih berkas PDF/TXT terlebih dahulu!');
+        return;
+    }
+
+    const file = fileInput.files[0];
+
+    const newKitab = {
+        id: Date.now(),
+        title: title,
+        desc: desc || `File: ${file.name}`,
+        fileName: file.name,
+        fileSize: (file.size / 1024).toFixed(1) + ' KB',
+        checked: true
+    };
+
+    kitabDatabase.push(newKitab);
+    renderKitabList();
+    closeAddKitabModal();
+    showToast(`Kitab "${title}" (${file.name}) berhasil diunggah!`);
+}
+
+// Reset Form saat modal ditutup
+function closeAddKitabModal() {
+    document.getElementById('addKitabModal').classList.add('hidden');
+    document.getElementById('newKitabTitle').value = '';
+    document.getElementById('newKitabDesc').value = '';
+    document.getElementById('newKitabFile').value = '';
+    document.getElementById('uploadPlaceholder').classList.remove('hidden');
+    document.getElementById('fileSelectedInfo').classList.add('hidden');
+}
+// Hapus Kitab
+function deleteKitab(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    kitabDatabase = kitabDatabase.filter(k => k.id !== id);
+    renderKitabList();
+    showToast('Kitab berhasil dihapus dari daftar.');
+}
+
+// Panggil fungsi renderKitabList saat aplikasi dimuat:
+document.addEventListener('DOMContentLoaded', () => {
+    renderContacts();
+    renderKitabList(); // << Tambahkan ini
+});
+</script>
+</body>
+</html>
