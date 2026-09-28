@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,6 +41,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- DATABASE INITIALIZATION ---
+@app.on_event("startup")
+def startup_db():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Tabel untuk menyimpan artikel yang siap dibagikan lewat tautan unik
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS shared_articles (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    references_json JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            # Tabel pelacak aktivitas pembaca (Leads Database)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS readers (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    phone VARCHAR(50),
+                    article_id INT REFERENCES shared_articles(id),
+                    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.commit()
+    finally:
+        conn.close()
 
 # --- HELPER FUNCTIONS ---
 
@@ -96,6 +127,16 @@ class GenerateRequest(BaseModel):
     article_format: Optional[str] = "Artikel Umum" # Khutbah, Diskusi, Makalah
     article_tone: Optional[str] = "Formal" # Formal, Semi-Formal, Santai
     selected_kitab_ids: Optional[List[int]] = []
+
+class SaveArticleRequest(BaseModel):
+    title: str
+    content: str
+    references: Optional[List[dict]] = []
+
+class TrackReaderRequest(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    article_id: int
 
 # --- API ENDPOINTS ---
 
@@ -244,6 +285,72 @@ PETUNJUK PENULISAN:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal menghasilkan artikel via Gemini API: {str(e)}")
+
+@app.post("/api/articles")
+def save_article(payload: SaveArticleRequest):
+    """Menyimpan konten artikel agar bisa diakses lewat tautan publik unik"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO shared_articles (title, content, references_json) VALUES (%s, %s, %s) RETURNING id;",
+                (payload.title, payload.content, json.dumps(payload.references))
+            )
+            article_id = cursor.fetchone()['id']
+            conn.commit()
+            return {"success": True, "article_id": article_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan artikel: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/articles/{article_id}")
+def get_article(article_id: int):
+    """Mengambil data artikel publik berdasarkan ID"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, title, content, references_json FROM shared_articles WHERE id = %s;", (article_id,))
+            article = cursor.fetchone()
+            if not article:
+                raise HTTPException(status_code=404, detail="Artikel tidak ditemukan")
+            return {"success": True, "data": article}
+    finally:
+        conn.close()
+
+@app.post("/api/readers/track")
+def track_reader(payload: TrackReaderRequest):
+    """Mencatat data pembaca baru ke dalam database pembaca"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO readers (name, phone, article_id) VALUES (%s, %s, %s) RETURNING id;",
+                (payload.name, payload.phone, payload.article_id)
+            )
+            conn.commit()
+            return {"success": True, "message": "Aktivitas pembaca berhasil dicatat"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mencatat pembaca: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/readers")
+def list_readers():
+    """Mengambil semua daftar pembaca yang masuk lewat tautan publik"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT r.id, r.name, r.phone, r.viewed_at, a.title as article_title 
+                FROM readers r
+                LEFT JOIN shared_articles a ON r.article_id = a.id
+                ORDER BY r.viewed_at DESC;
+            """)
+            readers = cursor.fetchall()
+            return {"success": True, "data": readers}
+    finally:
+        conn.close()
 
 if __name__ == "__main__":
     import uvicorn

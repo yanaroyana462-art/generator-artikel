@@ -49,6 +49,9 @@
                 <button id="tab-whatsapp" onclick="switchTab('whatsapp')" class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2">
                     <i class="fa-brands fa-whatsapp"></i> Database WA
                 </button>
+                <button id="tab-readers" onclick="switchTab('readers')" class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-users text-emerald-400"></i> Database Pembaca
+                </button>
             </nav>
 
             <button onclick="resetApp()" class="text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1.5 bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/50 transition-all">
@@ -293,6 +296,59 @@
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW 3: DATABASE PEMBACA                   -->
+        <!-- ========================================== -->
+        <div id="readers-view" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-emerald-400"></i> Hasil Konversi Pembaca (Leads)
+                </h3>
+                <button onclick="loadReadersTable()" class="text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1 rounded-xl transition-all border border-slate-700">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider">
+                        <tr>
+                            <th class="p-3">Nama Pembaca</th>
+                            <th class="p-3">No WhatsApp</th>
+                            <th class="p-3">Artikel yang Dibaca</th>
+                            <th class="p-3">Waktu Akses</th>
+                        </tr>
+                    </thead>
+                    <tbody id="readersTableBody" class="divide-y divide-slate-800/50">
+                        <tr><td colspan="4" class="p-4 text-center text-slate-500">Memuat database pembaca...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 4: PUBLIC READER MODE (LANDING PAGE)  -->
+        <!-- ========================================== -->
+        <div id="public-reader-view" class="hidden max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative">
+            <div id="reader-gate-blur" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-3xl z-40 flex items-center justify-center p-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+                    <i class="fa-solid fa-shield-halved text-emerald-400 text-4xl animate-pulse"></i>
+                    <h3 class="text-base font-bold text-slate-100">Akses Artikel Eksklusif</h3>
+                    <p class="text-xs text-slate-400">Masukkan Nama & Nomor WhatsApp Anda untuk membuka rujukan lengkap dan membaca artikel edukasi kaffah ini.</p>
+                    <form id="readerGateForm" onsubmit="unlockArticle(event)" class="space-y-3">
+                        <input type="text" id="readerName" required placeholder="Nama Lengkap Anda..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="readerPhone" required placeholder="No WhatsApp (Contoh: 0812345...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition-all">
+                            Buka Artikel Lengkap <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <article class="space-y-6">
+                <h1 id="publicArticleTitle" class="text-2xl font-black text-slate-100 leading-tight"></h1>
+                <div id="publicArticleContent" class="text-slate-300 text-sm leading-relaxed space-y-4"></div>
+            </article>
+        </div>
+
     </main>
 
     <!-- MODAL TAMBAH KITAB / UPLOAD PDF -->
@@ -351,6 +407,9 @@
         </button>
         <button id="tab-whatsapp-mobile" onclick="switchTab('whatsapp')" class="flex-1 py-2 rounded-xl text-slate-400 text-xs font-medium flex items-center justify-center gap-2">
             <i class="fa-brands fa-whatsapp"></i> Database WA
+        </button>
+        <button id="tab-readers-mobile" onclick="switchTab('readers')" class="flex-1 py-2 rounded-xl text-slate-400 text-xs font-medium flex items-center justify-center gap-2">
+            <i class="fa-solid fa-users"></i> Pembaca
         </button>
     </div>
 
@@ -787,15 +846,33 @@
         updateShareCount();
     }
 
-    function sendIndividualWA(phone) {
+    async function sendIndividualWA(phone) {
         const title = document.getElementById('articleTitle').innerText;
         const htmlContent = document.getElementById('articleContent').innerHTML;
+        
+        // Simpan artikel ke database backend agar mendapatkan ID link unik publik
+        let articleId = 1;
+        try {
+            const res = await fetch("/api/articles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, content: htmlContent })
+            });
+            const resData = await res.json();
+            if (resData.success) articleId = resData.article_id;
+        } catch (err) {
+            console.error("Gagal mendaftarkan link baca", err);
+        }
+
+        const publicReadLink = `${window.location.origin}${window.location.pathname}?read=${articleId}`;
         const formattedBody = convertHtmlToWhatsappMarkdown(htmlContent);
 
         const refs = Array.from(document.querySelectorAll('#referenceList li')).map(li => li.innerText).join('\n');
         const refSection = refs ? `\n\n*Referensi Kitab:*\n${refs}` : '';
 
-        const fullMessage = `*${title.toUpperCase()}*\n\n${formattedBody}${refSection}\n\n_Diproduksi via RAG Content Engine_`;
+        // Modifikasi pesan: Hanya kirim cuplikan ringkas + Link baca selengkapnya
+        const snippet = formattedBody.split('\n\n')[0]; // Ambil paragraf pertama saja
+        const fullMessage = `*${title.toUpperCase()}*\n\n${snippet}...\n\n📖 *Baca Selengkapnya secara Lengkap di sini:* ${publicReadLink}\n\n_Diproduksi via RAG Content Engine_`;
         const textMessage = encodeURIComponent(fullMessage);
         
         window.open(`https://wa.me/${phone}?text=${textMessage}`, '_blank');
@@ -975,10 +1052,93 @@ function deleteKitab(event, id) {
     showToast('Kitab berhasil dihapus dari daftar.');
 }
 
+// ==========================================
+// 8. LINK GATING SYSTEM & PUBLIC VIEW MODE
+// ==========================================
+let activeArticleId = null;
+
+async function checkPublicReaderMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const readId = urlParams.get('read');
+
+    if (readId) {
+        activeArticleId = readId;
+        // Sembunyikan semua elemen layout admin & dashboard
+        document.querySelector('header').classList.add('hidden');
+        document.getElementById('generator-view').classList.add('hidden');
+        document.getElementById('whatsapp-view').classList.add('hidden');
+        document.getElementById('readers-view').classList.add('hidden');
+        document.querySelector('main').classList.remove('max-w-7xl');
+        document.querySelector('main').classList.add('max-w-3xl');
+
+        // Tampilkan view baca publik
+        document.getElementById('public-reader-view').classList.remove('hidden');
+        
+        try {
+            const res = await fetch(`/api/articles/${readId}`);
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('publicArticleTitle').innerText = data.data.title;
+                document.getElementById('publicArticleContent').innerHTML = data.data.content;
+            }
+        } catch (err) {
+            document.getElementById('publicArticleTitle').innerText = "Artikel Tidak Ditemukan";
+            document.getElementById('publicArticleContent').innerHTML = "<p class='text-slate-500'>Tautan tidak valid atau artikel telah dihapus.</p>";
+            document.getElementById('reader-gate-blur').classList.add('hidden');
+        }
+    }
+}
+
+async function unlockArticle(e) {
+    e.preventDefault();
+    const name = document.getElementById('readerName').value.trim();
+    const phone = document.getElementById('readerPhone').value.trim();
+
+    try {
+        const res = await fetch("/api/readers/track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, phone, article_id: parseInt(activeArticleId) })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('reader-gate-blur').classList.add('hidden');
+            showToast("Akses artikel dibuka. Selamat membaca!");
+        }
+    } catch (err) {
+        alert("Koneksi gagal, silakan coba lagi.");
+    }
+}
+
+async function loadReadersTable() {
+    const tbody = document.getElementById('readersTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">Memuat database pembaca...</td></tr>';
+    try {
+        const res = await fetch("/api/readers");
+        const data = await res.json();
+        if (data.success && data.data.length > 0) {
+            tbody.innerHTML = data.data.map(r => `
+                <tr class="hover:bg-slate-900/60 transition-colors border-b border-slate-800/50">
+                    <td class="p-3 font-semibold text-slate-200">${r.name}</td>
+                    <td class="p-3 font-mono text-emerald-400">${r.phone || '-'}</td>
+                    <td class="p-3 text-slate-300">${r.article_title || 'Tautan Langsung'}</td>
+                    <td class="p-3 text-slate-500 font-mono text-[11px]">${new Date(r.viewed_at).toLocaleString('id-ID')}</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">Belum ada aktivitas pembaca yang terekam.</td></tr>';
+        }
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-rose-500">Gagal mengambil data dari server.</td></tr>';
+    }
+}
+
 // Panggil fungsi renderKitabList saat aplikasi dimuat:
 document.addEventListener('DOMContentLoaded', () => {
     renderContacts();
     renderKitabList(); // << Tambahkan ini
+    checkPublicReaderMode();
 });
 </script>
 </body>
