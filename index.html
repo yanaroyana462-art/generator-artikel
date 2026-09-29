@@ -230,6 +230,7 @@
                             <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                                 <i class="fa-solid fa-bullhorn animate-bounce"></i> Hook Promosi WhatsApp (Otomatis + Link LP)
                             </h4>
+
                             <div class="flex items-center gap-3">
                                 <button onclick="regenerateHook()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
                                     <i class="fa-solid fa-arrows-rotate"></i> Generate Ulang
@@ -497,6 +498,8 @@
     // ==========================================
     // 1. STATE & INITIALIZATION
     // ==========================================
+    const API_BASE_URL = window.API_BASE_URL || (window.location.port !== '8000' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:8000' : '');
+
     let contacts = JSON.parse(localStorage.getItem('wa_contacts')) || [
         { id: 1, name: 'Ahmad Fauzi', phone: '628123456789' },
         { id: 2, name: 'Ustadz Ridwan', phone: '628987654321' }
@@ -587,7 +590,7 @@
     // ==========================================
     // 3. GENERATOR ENGINE (RAG SIMULATOR)
     // ==========================================
-    function handleGenerate(e) {
+    async function handleGenerate(e) {
         e.preventDefault();
 
         const topic = document.getElementById('topicInput').value;
@@ -608,48 +611,51 @@
         document.getElementById('loadingState').classList.remove('hidden');
 
         // Reset indikator langkah RAG
-        const step1 = document.getElementById('step1');
-        const step2 = document.getElementById('step2');
-        const step3 = document.getElementById('step3');
+        updateRagStep(1, 'active', 'Melakukan Pencarian Vektor (Semantic Search)...');
+        updateRagStep(2, 'waiting', 'Mencocokkan Kutipan & Bab Kitab...');
+        updateRagStep(3, 'waiting', 'Menyusun Alur Narrative via Gemini AI...');
 
-        step1.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
-        step1.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Melakukan Pencarian Vektor (Semantic Search)...</span>`;
-        
-        step2.className = "flex items-center gap-3 text-slate-600 transition-all";
-        step2.innerHTML = `<i class="fa-regular fa-circle"></i> <span>Mencocokkan Kutipan & Bab Kitab...</span>`;
-        
-        step3.className = "flex items-center gap-3 text-slate-600 transition-all";
-        step3.innerHTML = `<i class="fa-regular fa-circle"></i> <span>Menyusun Alur Narrative & Format Artikel...</span>`;
+        try {
+            setTimeout(() => updateRagStep(1, 'done', 'Pencarian Vektor Selesai.'), 800);
+            setTimeout(() => updateRagStep(2, 'active', 'Mencocokkan Kutipan & Konteks Kitab...'), 900);
 
-        // Simulasi Step 2
-        setTimeout(() => {
-            step1.className = "flex items-center gap-3 text-emerald-500/80 transition-all";
-            step1.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>Pencarian Vektor Selesai.</span>`;
+            const response = await fetch(`${API_BASE_URL}/api/generate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    topic,
+                    target_audience: "Umum",
+                    article_length: articleLength,
+                    article_type: articleType,
+                    article_format: articleFormat,
+                    article_tone: articleTone,
+                    selected_kitab_ids: []
+                })
+            });
 
-            step2.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
-            step2.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Mencocokkan Kutipan & Bab Kitab...</span>`;
-        }, 1200);
+            updateRagStep(2, 'done', 'Kutipan & Konteks Siap.');
+            updateRagStep(3, 'active', 'Gemini AI sedang menulis artikel ideologis...');
 
-        // Simulasi Step 3
-        setTimeout(() => {
-            step2.className = "flex items-center gap-3 text-emerald-500/80 transition-all";
-            step2.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>Kutipan Berhasil Ditemukan.</span>`;
+            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+            const data = await response.json();
 
-            step3.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
-            step3.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Menyusun Alur Narrative & Format Artikel...</span>`;
-        }, 2500);
+            updateRagStep(3, 'done', 'Naskah Artikel Berhasil Dibuat.');
 
-        // Render Hasil Akhir
-        setTimeout(() => {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('resultState').classList.remove('hidden');
-            renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, selectedKitab);
+            renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, selectedKitab, data.content, data.references);
             showToast('Artikel berhasil digenerate!');
-        }, 3800);
+        } catch (err) {
+            console.error("Gagal generate artikel AI:", err);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultState').classList.remove('hidden');
+            renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, selectedKitab, null, null);
+            showToast('Mode fallback aktif: Menampilkan draf lokal.');
+        }
     }
 
-    function renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, kitabList) {
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'Long', year: 'numeric' });
+    function renderGeneratedContent(topic, articleType, articleLength, articleFormat, articleTone, kitabList, aiContent, references) {
+        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         
         // Render Badges Kitab
         const badgesContainer = document.getElementById('kitabBadges');
@@ -661,7 +667,8 @@
         document.getElementById('articleTitle').innerText = topic;
         document.getElementById('articleDate').innerText = today;
 
-        // Content Dummy Generation
+        // Tampilkan konten dari Gemini AI jika tersedia, atau fallback lokal jika offline/error
+        let formattedAiContent = aiContent ? aiContent.replace(/\n\n/g, '</p><p class="mt-3">').replace(/\n/g, '<br>') : null;
         let articleHTML = `
             <p class="first-letter:text-3xl first-letter:font-bold first-letter:text-emerald-400 first-letter:mr-1">
                 Dalam meninjau pembahasan mengenai <strong>${topic}</strong>, pemahaman mendasar berlandaskan asas pemikiran Islam menjadi pijakan utama. Setiap fenomena sosial dan politik memerlukan landasan pemikiran yang jernih agar solusi yang dihasilkan bersifat mendasar dan tidak parsial.
@@ -697,14 +704,16 @@
             `;
         }
 
-        document.getElementById('articleContent').innerHTML = articleHTML;
+        const finalContent = formattedAiContent ? `<p>${formattedAiContent}</p>` : articleHTML;
+        document.getElementById('articleContent').innerHTML = finalContent;
 
         // Render References
         const refList = document.getElementById('referenceList');
-        refList.innerHTML = kitabList.map(k => 
+        const refsToRender = (references && references.length > 0) ? references : kitabList.map(k => ({ kitab: k, page: 'Landasan & Konsep', excerpt: 'Indeks Vektor Matched' }));
+        refList.innerHTML = refsToRender.map(r => 
             `<li class="flex items-start gap-2">
                 <i class="fa-solid fa-angle-right text-emerald-400 mt-0.5"></i>
-                <span><strong>${k}</strong> — Bab Penjelasan Landasan & Hukum Syara' (Indeks Vektor Matched)</span>
+                <span><strong>${r.kitab || r}</strong> ${r.page ? `(Hal. ${r.page})` : ''} — ${r.excerpt || 'Rujukan Pembahasan'}</span>
             </li>`
         ).join('');
 
@@ -720,7 +729,19 @@
             date: today
         };
 
-        generateAutoHook(topic, articleHTML, articleType, kitabList);
+        generateAutoHook(topic, finalContent, articleType, kitabList);
+    }
+
+    function updateRagStep(stepNum, status, text) {
+        const stepEl = document.getElementById(`step${stepNum}`);
+        if (!stepEl) return;
+        if (status === 'active') {
+            stepEl.className = "flex items-center gap-3 text-emerald-400 transition-all font-medium";
+            stepEl.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>${text}</span>`;
+        } else if (status === 'done') {
+            stepEl.className = "flex items-center gap-3 text-emerald-500/80 transition-all";
+            stepEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>${text}</span>`;
+        }
     }
 
     async function generateAutoHook(title, htmlContent, articleType, kitabList) {
@@ -729,11 +750,12 @@
 
         let articleId = 1;
         try {
-            const res = await fetch("/api/articles", {
+            const res = await fetch(`${API_BASE_URL}/api/articles`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title, content: htmlContent, article_type: articleType })
             });
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const resData = await res.json();
             if (resData.success) articleId = resData.article_id;
         } catch (err) {
@@ -745,7 +767,7 @@
         if (hookTextarea) hookTextarea.value = "Meminta Gemini AI menyusun Hook Promosi unik...";
 
         try {
-            const hookRes = await fetch("/api/generate-hook", {
+            const hookRes = await fetch(`${API_BASE_URL}/api/generate-hook`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -755,6 +777,7 @@
                     link: lpLink
                 })
             });
+            if (!hookRes.ok) throw new Error(`HTTP error ${hookRes.status}`);
             const hookData = await hookRes.json();
             if (hookData.success && hookTextarea) {
                 hookTextarea.value = hookData.hook;
@@ -787,7 +810,7 @@
         const lpLink = currentArticle.lpLink || `${window.location.origin}${window.location.pathname}?read=${currentArticle.id || 1}`;
 
         try {
-            const hookRes = await fetch("/api/generate-hook", {
+            const hookRes = await fetch(`${API_BASE_URL}/api/generate-hook`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -797,6 +820,7 @@
                     link: lpLink
                 })
             });
+            if (!hookRes.ok) throw new Error(`HTTP error ${hookRes.status}`);
             const hookData = await hookRes.json();
             if (hookData.success && hookTextarea) {
                 hookTextarea.value = hookData.hook;
@@ -1196,7 +1220,8 @@ async function checkPublicReaderMode() {
 async function loadPublicArticle(articleId) {
     activeArticleId = articleId;
     try {
-        const res = await fetch(`/api/articles/${articleId}`);
+        const res = await fetch(`${API_BASE_URL}/api/articles/${articleId}`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         const data = await res.json();
         if (data.success) {
             document.getElementById('publicArticleTitle').innerText = data.data.title;
@@ -1219,7 +1244,8 @@ async function loadPublicArticle(articleId) {
 
 async function loadPublicArticlesSidebar() {
     try {
-        const res = await fetch("/api/articles");
+        const res = await fetch(`${API_BASE_URL}/api/articles`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         const data = await res.json();
         if (data.success) {
             loadedPublicArticles = data.data;
@@ -1278,11 +1304,12 @@ async function unlockArticle(e) {
     const phone = document.getElementById('readerPhone').value.trim();
 
     try {
-        const res = await fetch("/api/readers/track", {
+        const res = await fetch(`${API_BASE_URL}/api/readers/track`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, phone, article_id: parseInt(activeArticleId) })
         });
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         const data = await res.json();
         if (data.success) {
             document.getElementById('reader-gate-blur').classList.add('hidden');
@@ -1299,7 +1326,8 @@ async function loadReadersTable() {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">Memuat database pembaca...</td></tr>';
     try {
-        const res = await fetch("/api/readers");
+        const res = await fetch(`${API_BASE_URL}/api/readers`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         const data = await res.json();
         if (data.success && data.data.length > 0) {
             tbody.innerHTML = data.data.map(r => `
